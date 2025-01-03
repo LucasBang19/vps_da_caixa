@@ -9,6 +9,7 @@ import time
 import xml.etree.ElementTree as ET
 import re  # Importa o módulo para expressões regulares
 from xml.dom import minidom  # Para formatar o XML
+from datetime import datetime
 
 def iniciar_driver():
     chrome_options = webdriver.ChromeOptions()
@@ -114,23 +115,30 @@ time.sleep(1)
 
 def criar_xml():
     # Caminho do arquivo Excel
-    download_dir = os.path.expanduser(r"C:\Users\homeo\Desktop\FREELANCER\XML\arquivos")  # Pasta Downloads
+    download_dir = os.path.expanduser(r"C:\Users\homeo\Desktop\FREELANCER\XML\arquivos")
     file_name = "Imoveis_Venda_Direta_Online.xlsx"
     caminho_xlsx = os.path.join(download_dir, file_name)
 
     # Carregar o arquivo .xlsx no Pandas
     df = pd.read_excel(caminho_xlsx)
 
-    # Criação do elemento raiz do XML
-    root = ET.Element("Root")
+    # Criação do elemento raiz do XML com namespaces
+    ns = {
+        "xmlns": "http://www.vivareal.com/schemas/1.0/VRSync",
+        "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+        "xsi:schemaLocation": "http://www.vivareal.com/schemas/1.0/VRSync http://xml.vivareal.com/vrsync.xsd"
+    }
+    root = ET.Element("ListingDataFeed", ns)
 
-    # Header estático
+    current_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+    # Header com informações fornecidas
     header = ET.SubElement(root, "Header")
-    ET.SubElement(header, "Provider").text = ""
-    ET.SubElement(header, "Email").text = ""
-    ET.SubElement(header, "ContactName").text = ""
-    ET.SubElement(header, "PublishDate").text = ""
-    ET.SubElement(header, "Telephone").text = ""
+    ET.SubElement(header, "Provider").text = "Bangbot"
+    ET.SubElement(header, "Email").text = "luisotavioshinkawa@hotmail.com"
+    ET.SubElement(header, "ContactName").text = "Luis Otavio Marcolino Shinkawa "
+    ET.SubElement(header, "PublishDate").text = current_time
+    ET.SubElement(header, "Telephone").text = "+55 35 9710-0861"
 
     # Listings
     listings = ET.SubElement(root, "Listings")
@@ -145,7 +153,7 @@ def criar_xml():
     # Itera sobre cada linha do DataFrame e cria os elementos no formato correto
     for _, row in df.iterrows():
         listing = ET.SubElement(listings, "Listing")
-        
+
         # Campos no XML
         ET.SubElement(listing, "ListingID").text = str(row.iloc[0])
         ET.SubElement(listing, "Title").text = (
@@ -154,10 +162,33 @@ def criar_xml():
         )
         ET.SubElement(listing, "TransactionType").text = "For Sale"
 
+        # Criar a URL da imagem com base no código do imóvel
+        codigo_imovel = row.iloc[0]  # A primeira coluna (código do imóvel)
+
+        if len(str(codigo_imovel)) <= 12:
+            # Para imóveis com código curto, usa o padrão F00000
+            img_url = f"https://venda-imoveis.caixa.gov.br/fotos/F00000{codigo_imovel}21.jpg"
+        else:
+            # Para imóveis com código longo, usa o padrão F + código do imóvel + 21
+            img_url = f"https://venda-imoveis.caixa.gov.br/fotos/F{codigo_imovel}21.jpg"
+
         # Media
         media = ET.SubElement(listing, "Media")
-        ET.SubElement(media, "Item", {"medium": "video"})
-        ET.SubElement(media, "Item", {"medium": "image", "caption": "img0", "primary": "true"}).text = str(row.iloc[10])
+        ET.SubElement(media, "Item", {"medium": "image", "caption": "img0", "primary": "true"}).text = img_url
+
+        # Lista de imagens adicionais fixas
+        default_images = [
+            "caixa1.png",
+            "caixa2.png",
+            "caixa3.png",
+            "azul.png",
+            "caixa4.png",
+            "imovelazul.png"
+        ]
+
+        # Adiciona as imagens adicionais na ordem especificada
+        for idx, image in enumerate(default_images, start=1):
+            ET.SubElement(media, "Item", {"medium": "image", "caption": f"img{idx}"}).text = os.path.join("imagens", image)
 
         # Details
         details = ET.SubElement(listing, "Details")
