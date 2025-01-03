@@ -186,9 +186,11 @@ def criar_xml():
             "imovelazul.png"
         ]
 
-        # Adiciona as imagens adicionais na ordem especificada
-        for idx, image in enumerate(default_images, start=1):
-            ET.SubElement(media, "Item", {"medium": "image", "caption": f"img{idx}"}).text = os.path.join("imagens", image)
+        base_url = "http://172.233.24.63/arquivos/imagens/"  # URL base para as imagens no servidor
+
+        for i, image in enumerate(default_images, start=1):
+            image_url = base_url + image  # Criar o URL completo para cada imagem
+            ET.SubElement(media, "Item", {"medium": "image", "caption": f"img{i}"}).text = image_url
 
         # Details
         details = ET.SubElement(listing, "Details")
